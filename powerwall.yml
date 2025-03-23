@@ -1,4 +1,22 @@
 services:
+    traefik:
+        image: traefik:v3.1
+        container_name: traefik
+        restart: always
+        ports:
+            - "8090:8090"
+        volumes:
+            - "/var/run/docker.sock:/var/run/docker.sock:ro"
+        command:
+            - --ping=true
+            - --providers.docker=true
+            - --providers.docker.exposedbydefault=false
+            - --entrypoints.web.address=:8090
+        # - --experimental.plugins.rewrite-body.modulename=github.com/packruler/rewrite-body
+        # - --experimental.plugins.rewrite-body.version=v1.2.0
+        # - --experimental.plugins.rewriteHeaders.modulename=github.com/XciD/traefik-plugin-rewrite-headers
+        # - --experimental.plugins.rewriteHeaders.version=v0.0.3
+
     influxdb:
         image: influxdb:1.8
         container_name: influxdb
@@ -17,6 +35,25 @@ services:
         env_file:
             - influxdb.env
 
+    power-flow:
+        image: mccahan/power-flow:latest
+        container_name: power-flow
+        environment:
+            - SOLAR_ONLY=false
+            - DISABLE_BRANDING=true
+            - PYPOWERWALL_URL=/pypowerwall
+            - URL_PREFIX=/power-flow/
+        ports:
+            - 3000:3000
+        labels:
+            - traefik.enable=true
+            - traefik.http.routers.flow.rule=(PathPrefix(`/power-flow`))
+            - traefik.http.routers.flow.middlewares=flow-stripprefix
+            - traefik.http.middlewares.flow-stripprefix.stripprefix.prefixes=/power-flow
+            - traefik.http.services.flow.loadbalancer.server.port=3000
+            - traefik.http.routers.flow-assets.rule=(PathPrefix(`/_next`))
+            - traefik.http.routers.flow-assets.service=flow
+
     pypowerwall:
         image: jasonacox/pypowerwall:0.12.4t68
         container_name: pypowerwall
@@ -33,6 +70,13 @@ services:
             - PW_AUTH_PATH=.auth
         env_file:
             - pypowerwall.env
+        labels:
+            - traefik.enable=true
+            - traefik.http.routers.pypowerwall.rule=(PathPrefix(`/pypowerwall`))
+            - traefik.http.routers.pypowerwall.middlewares=pypowerwall-stripprefix
+            - traefik.http.middlewares.pypowerwall-stripprefix.stripprefix.prefixes=/pypowerwall
+            - traefik.http.services.pypowerwall.loadbalancer.server.port=8675
+            - custom.label=pypowerwall
 
     telegraf:
         image: telegraf:1.28.2
@@ -84,6 +128,11 @@ services:
             - grafana.env
         depends_on:
             - influxdb
+        labels:
+            - traefik.enable=true
+            - traefik.http.routers.grafana.rule=(PathPrefix(`/`))
+            - traefik.http.services.grafana.loadbalancer.server.port=9000
+            - custom.label=grafana
 
     weather411:
         image: jasonacox/weather411:0.2.3
