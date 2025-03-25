@@ -543,7 +543,7 @@ fi
 cat << EOF
 ------------------[ Final Setup Instructions ]-----------------
 
-Open Grafana at http://localhost:9000/ ... use admin/admin for login.
+Open Grafana at http://localhost:8090/ ... use admin/admin for login.
 
 To complete *Grafana Setup*:
 

@@ -1,4 +1,19 @@
 services:
+    nginx:
+       image: nginx:1.27.4-alpine-slim
+       container_name: nginx
+       ports:
+         - "${PROXY_PORTS:-8090:8090}"
+       volumes:
+         # Mount the custom Nginx config (make sure nginx.conf is in the same folder as your docker-compose.yml)
+         - type: bind
+           source: ./nginx.conf
+           target: /etc/nginx/conf.d/default.conf
+           read_only: true
+       depends_on:
+         - grafana
+         - pypowerwall
+
     influxdb:
         image: influxdb:1.8
         container_name: influxdb
@@ -18,7 +33,7 @@ services:
             - influxdb.env
 
     pypowerwall:
-        image: jasonacox/pypowerwall:0.12.4t68
+        image: mccahan/pypowerwall:latest
         container_name: pypowerwall
         hostname: pypowerwall
         restart: unless-stopped
@@ -31,6 +46,7 @@ services:
             - "${PYPOWERWALL_PORTS:-8675:8675}"
         environment:
             - PW_AUTH_PATH=.auth
+            - PROXY_BASE_URL=/pypowerwall/
         env_file:
             - pypowerwall.env
 
